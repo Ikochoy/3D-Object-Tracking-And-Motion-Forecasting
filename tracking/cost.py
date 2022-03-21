@@ -6,11 +6,13 @@ def get_params(info):
     centroid_x, centroid_y = info[0], info[1]
     box_x, box_y = info[2], info[3]
     heading = info[-1]
+
     # before_rotation matrix should be 2 x 4 array
-    before_rotation = np.array([[centroid_x-box_x/2, centroid_y-box_y/2], [centroid_x-box_x/2, centroid_y+box_y/2],
-        [centroid_x+box_x/2, centroid_y+box_y/2], [centroid_x+box_x/2, centroid_y-box_y/2]]).T
+    before_rotation = np.array([[-box_x/2, -box_y/2], [-box_x/2, box_y/2], [box_x/2, box_y/2], [box_x/2, -box_y/2]]).T
     rotation_matrix = np.array([[np.cos(heading), -np.sin(heading)], [np.sin(heading), np.cos(heading)]])
-    after_rotation = np.matmul(rotation_matrix, before_rotation).T
+    
+    # rotation about the point as the origin, then translate
+    after_rotation = (np.matmul(rotation_matrix, before_rotation) + np.array([[centroid_x], [centroid_y]])).T
     return after_rotation.tolist()
 
 def iou_2d(bboxes1: np.ndarray, bboxes2: np.ndarray) -> np.ndarray:
@@ -36,4 +38,5 @@ def iou_2d(bboxes1: np.ndarray, bboxes2: np.ndarray) -> np.ndarray:
             union = polygon1.union(polygon2).area
             iou = intersect / union
             iou_mat[i][j] = iou
+    print(iou_mat)
     return iou_mat
