@@ -57,7 +57,8 @@ class Tracker:
         """
         # TODO: Replace this stub code by making use of iou_2d
         M, N = bboxes1.shape[0], bboxes2.shape[0]
-        cost_matrix = torch.ones((M, N))
+        # cost_matrix = torch.ones((M, N))
+        cost_matrix = 1 - torch.tensor(iou_2d(bboxes1.numpy(), bboxes2.numpy()))
         return cost_matrix
 
     def associate_greedy(
@@ -75,8 +76,12 @@ class Tracker:
         """
         # TODO: Replace this stub code by invoking self.cost_matrix and greedy_matching
         M, N = bboxes1.shape[0], bboxes2.shape[0]
-        cost_matrix = torch.ones((M, N))
+        cost_matrix = cost_matrix(bboxes1, bboxes2)
+        lst1, lst2 = greedy_matching(cost_matrix)
+        
         assign_matrix = torch.zeros((M, N))
+        for i in range(len(lst1)):
+            assign_matrix[lst1[i]][lst2[i]] = 1
 
         return assign_matrix, cost_matrix
 
@@ -95,8 +100,11 @@ class Tracker:
         """
         # TODO: Replace this stub code by invoking self.cost_matrix and hungarian_matching
         M, N = bboxes1.shape[0], bboxes2.shape[0]
-        cost_matrix = torch.ones((M, N))
+        cost_matrix = cost_matrix(bboxes1, bboxes2)
+        lst1, lst2 = hungarian_matching(cost_matrix)
         assign_matrix = torch.zeros((M, N))
+        for i in range(len(lst1)):
+            assign_matrix[lst1[i]][lst2[i]] = 1
 
         return assign_matrix, cost_matrix
 
@@ -125,6 +133,7 @@ class Tracker:
             raise ValueError(f"Unknown association method {self.associate_method}")
 
         # TODO: Filter out matches with costs >= self.match_th
+        assign_matrix[cost_matrix >= self.match_th] = 0
 
         return assign_matrix, cost_matrix
 
