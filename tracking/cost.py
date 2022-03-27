@@ -38,5 +38,4 @@ def iou_2d(bboxes1: np.ndarray, bboxes2: np.ndarray) -> np.ndarray:
             union = polygon1.union(polygon2).area
             iou = intersect / union
             iou_mat[i][j] = iou
-    print(iou_mat)
     return iou_mat
