@@ -22,7 +22,10 @@ def compute_l1_loss(targets: Tensor, predictions: Tensor) -> Tensor:
         A scalar MAE loss between `predictions` and `targets`
     """
     # TODO: Implement.
-    return torch.sum(torch.abs(targets - predictions))
+    mask = 1 - torch.isnan(targets - predictions)
+    masked_valid_tensor = torch.masked_select((targets - predictions), mask)
+    
+    return torch.sum(torch.abs(masked_valid_tensor))
 
 
 @dataclass
