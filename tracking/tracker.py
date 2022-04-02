@@ -36,6 +36,7 @@ class Tracker:
         self.num_tracks = 0
         self.next_track_id = 0
         self.tracks: Dict[ActorID, SingleTracklet] = {}
+        # self.occluded_actor_frame: Dict[ActorID, int] = {}  # {}
 
     def create_new_tracklet(self, frame_id, bbox, score) -> int:
         """Given the initial frame_id, bbox and score, create a new tracklet and add to self.tracks"""
@@ -142,7 +143,8 @@ class Tracker:
         We only track bboxes with scores >= self.min_score.
 
         Args:
-            bboxes_seq: sequence of bounding box set of shape [N_i, 5]
+            bboxes_seq: sequence of bounding box set of shape [N_i, 5] 
+                Note: [#frames, #bboxes, 5] list of matrix
             scores_seq: sequences of bounding box confidence scores of shape [N_i, ]
         Returns:
             None
@@ -157,15 +159,32 @@ class Tracker:
 
         # Track incoming frames
         for frame_id in range(1, min(self.track_steps, len(bboxes_seq))):
+            prev_frame_track_ids = deepcopy(cur_frame_track_ids)
+
             prev_bboxes = bboxes_seq[frame_id - 1]
             cur_bboxes = bboxes_seq[frame_id]
             if scores_seq is not None:
                 prev_bboxes = prev_bboxes[scores_seq[frame_id - 1] >= self.min_score]
                 cur_bboxes = cur_bboxes[scores_seq[frame_id] >= self.min_score]
+            assign_matrix_old, cost_matrix_old = self.track_consecutive_frame(
+                prev_bboxes, cur_bboxes
+            )
+
+            # track_id is the same as actorID i.e. key of the self.tracks dictionary
+
+            occluded_actor_ids = []  # get row id (prev) of all-zero row in the assign matrix
+            for row_i in range(assign_matrix_old.shape[0]):  # for each prev bbox
+                if torch.sum(assign_matrix_old[row_i]) == 0:  # this prev bbox has no matching curr bbox
+                    # find track_id for this prev bbox
+                    track_id = prev_frame_track_ids[row_i]
+                    occluded_actor_ids.append(track_id)
+                    bbox = self.tracks[track_id].predict_bbox_position(frame_id)  # bbox prediction for this occluded actor in this frame
+                    cur_bboxes = torch.cat((cur_bboxes, bbox), dim=0)
+
             assign_matrix, cost_matrix = self.track_consecutive_frame(
                 prev_bboxes, cur_bboxes
             )
-            prev_frame_track_ids = deepcopy(cur_frame_track_ids)
+
             cur_frame_track_ids = []
             prev_bbox_ids, cur_bbox_ids = np.where(assign_matrix)
             for j in range(cur_bboxes.shape[0]):
