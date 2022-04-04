@@ -6,7 +6,6 @@ import torch
 from torch import Tensor
 
 from tracking.cost import iou_2d
-from tracking.main import track
 from tracking.matching import greedy_matching, hungarian_matching
 from tracking.types import ActorID, AssociateMethod, SingleTracklet
 

@@ -79,7 +79,7 @@ class SingleTracklet:
         self.frame_ids.append(occluded_frame_id)
         bbox = torch.tensor([x_new, y_new, self.bboxes_traj[-1][2], self.bboxes_traj[-1][3], yaw_new])
         self.bboxes_traj.append(bbox)
-        self.scores.append(0)  # score = cost = 1 - IOU score
+        self.scores.append(1)  # ? score = cost = 1 - IOU score
         
         return bbox
 
