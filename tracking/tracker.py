@@ -6,6 +6,7 @@ import torch
 from torch import Tensor
 
 from tracking.cost import iou_2d
+from tracking.main import track
 from tracking.matching import greedy_matching, hungarian_matching
 from tracking.types import ActorID, AssociateMethod, SingleTracklet
 
@@ -179,7 +180,9 @@ class Tracker:
                     track_id = prev_frame_track_ids[row_i]
                     occluded_actor_ids.append(track_id)
                     bbox = self.tracks[track_id].predict_bbox_position(frame_id)  # bbox prediction for this occluded actor in this frame
+                    bbox = bbox.unsqueeze(0)
                     cur_bboxes = torch.cat((cur_bboxes, bbox), dim=0)
+                    print(frame_id, track_id)
 
             assign_matrix, cost_matrix = self.track_consecutive_frame(
                 prev_bboxes, cur_bboxes

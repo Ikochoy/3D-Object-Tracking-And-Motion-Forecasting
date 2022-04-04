@@ -34,7 +34,7 @@ class SingleTracklet:
         self.scores = scores
 
         # change in x, change in y and change in yaw according to the last observed frame
-        self.velocities = [bboxes_traj[-1][0], bboxes_traj[-1][1], bboxes_traj[-1][-1]]
+        self.velocities = [(bboxes_traj[-1][0], bboxes_traj[-1][1], bboxes_traj[-1][-1])]
         self.num_occluded_frame = 0  # number of occluded frames in the current occlusion segment of frame seq
 
     @property
@@ -60,7 +60,7 @@ class SingleTracklet:
         if self.num_occluded_frame != 0:  # prev bbox in the trajectory was in a occluded frame
             # i.e. this frame is re-appearance of the actor
             self.num_occluded_frame = 0  # no occlusion anymore
-            self.velocities = [self.bboxes_traj[-1][0], self.bboxes_traj[-1][1], self.bboxes_traj[-1][-1]]
+            self.velocities = [(self.bboxes_traj[-1][0], self.bboxes_traj[-1][1], self.bboxes_traj[-1][-1])]
 
     
     def compute_velocity(self, prev_bbox, current_bbox):
@@ -73,13 +73,13 @@ class SingleTracklet:
         """Predict where the bounding boxes in future frames. Return tensor of bbox.
         """
         self.num_occluded_frame += 1
-        x_new = self.bboxes_traj[-1][0] + self.velocities[0] * self.num_occluded_frame
-        y_new = self.bboxes_traj[-1][1] + self.velocities[1] * self.num_occluded_frame
-        yaw_new = self.bboxes_traj[-1][-1] + self.velocities[-1] * self.num_occluded_frame
+        x_new = self.bboxes_traj[-1][0] + self.velocities[-1][0] * self.num_occluded_frame
+        y_new = self.bboxes_traj[-1][1] + self.velocities[-1][1] * self.num_occluded_frame
+        yaw_new = self.bboxes_traj[-1][-1] + self.velocities[-1][-1] * self.num_occluded_frame
         self.frame_ids.append(occluded_frame_id)
         bbox = torch.tensor([x_new, y_new, self.bboxes_traj[-1][2], self.bboxes_traj[-1][3], yaw_new])
         self.bboxes_traj.append(bbox)
-        self.scores.append(0)  # TODO: IOU score ?? 
+        self.scores.append(0)  # score = cost = 1 - IOU score
         
         return bbox
 
