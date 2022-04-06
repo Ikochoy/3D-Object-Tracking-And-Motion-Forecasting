@@ -73,13 +73,16 @@ class SingleTracklet:
         """Predict where the bounding boxes in future frames. Return tensor of bbox.
         """
         self.num_occluded_frame += 1
-        x_new = self.bboxes_traj[-1][0] + self.velocities[-1][0] * self.num_occluded_frame
+        x_new = self.bboxes_traj[-1][0] + self.velocities[-1][0] * self.num_occluded_frame  # velocity (time)
         y_new = self.bboxes_traj[-1][1] + self.velocities[-1][1] * self.num_occluded_frame
         yaw_new = self.bboxes_traj[-1][-1] + self.velocities[-1][-1] * self.num_occluded_frame
         self.frame_ids.append(occluded_frame_id)
         bbox = torch.tensor([x_new, y_new, self.bboxes_traj[-1][2], self.bboxes_traj[-1][3], yaw_new])
         self.bboxes_traj.append(bbox)
         self.scores.append(1)  # ? score = cost = 1 - IOU score
+
+        # delete non-matched prediicted bbox
+        # design test cases [main.py]
         
         return bbox
 

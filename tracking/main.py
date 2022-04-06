@@ -47,7 +47,9 @@ def track(
         tracker = Tracker(
             track_steps=80, associate_method=AssociateMethod(tracker_associate_method)
         )
-        tracker.track(tracking_inputs.bboxes, tracking_inputs.scores)
+        # scroes = 1
+        tracker.track(tracking_inputs.bboxes, tracking_inputs.scores)  # design small tracklets
+        # post-process func; predict re-appearance location, or somewhere in betw
         tracking_pred = Tracklets(tracker.tracks)
         save_dict = {
             "sequence_id": seq_id,

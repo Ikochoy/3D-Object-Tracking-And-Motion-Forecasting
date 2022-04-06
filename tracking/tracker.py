@@ -179,13 +179,21 @@ class Tracker:
                     track_id = prev_frame_track_ids[row_i]
                     occluded_actor_ids.append(track_id)
                     bbox = self.tracks[track_id].predict_bbox_position(frame_id)  # bbox prediction for this occluded actor in this frame
+                    # don't insert the predicted bbox to tracklet*
                     bbox = bbox.unsqueeze(0)
                     cur_bboxes = torch.cat((cur_bboxes, bbox), dim=0)
                     print(frame_id, track_id)
+                    print(self.tracks)  # identify which tracklet
 
             assign_matrix, cost_matrix = self.track_consecutive_frame(
                 prev_bboxes, cur_bboxes
-            )
+            ) 
+
+            # New Approach: post-processing: look at all tracklets (after calling track), and connect similar actors
+            # actors close to each other problem: higher match in Iou greedy/hungarian, and threshold
+            # bonus when exploring other ways of predicting for occlusion handling
+            
+            # flaw in our current approach
 
             cur_frame_track_ids = []
             prev_bbox_ids, cur_bbox_ids = np.where(assign_matrix)
@@ -197,7 +205,7 @@ class Tracker:
                     track_id = prev_frame_track_ids[i]
                     self.tracks[track_id].insert_new_observation(
                         frame_id, cur_bboxes[j], cost_matrix[i, j]
-                    )
+                    )  # inserting the predicted bbox*
                 else:
                     track_id = self.create_new_tracklet(frame_id, cur_bboxes[j], 0)
                 cur_frame_track_ids.append(track_id)
