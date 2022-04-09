@@ -1,6 +1,8 @@
 import numpy as np
 from shapely.geometry import Polygon
 
+from tracking.types import ActorID
+
 
 def get_params(info):
     # get list of tuples (x,y) of the corner points of parameter info
@@ -71,3 +73,28 @@ def geom_2d(bboxes1: np.ndarray, bboxes2: np.ndarray) -> np.ndarray:
 
 
     return geom_mat
+
+
+def motion_2d(bboxes1: np.ndarray, bboxes2: np.ndarray, track_ids, all_tracklets_in_seq) -> np.ndarray:  
+    # arg: track_ids for bboxes1 actors, 
+    # arg: all_tracklets_in_seq 
+
+    # find the difference in velocities between at frame bboxes1 and at frame bboxes2
+    # 1. calculate the velocity of bboxes1 and their previous frame in corresponding tracklets
+    # 2. calculate the velocity i.e. displacement between bboxes1 centroid and bboxes2 centroid
+
+    M, N = bboxes1.shape[0], bboxes2.shape[0]
+    motion_mat = np.zeros((M, N))
+    for i in range(M):
+        # calculate the velocity of bboxes1 and their previous frame in corresponding tracklets
+        track_id = track_ids[i]
+        tracklet = all_tracklets_in_seq[track_id]
+        # get velocities from the last 2 tracklet.bboxes_traj bboxes
+        velocity1 = np.array([tracklet.bboxes_traj[-2][0], tracklet.bboxes_traj[-2][1]]) - np.array([bboxes1[i][0], bboxes1[i][1]])
+
+        for j in range(N):
+            # calculate the velocity i.e. displacement between bboxes1 centroid and bboxes2 centroid
+            velocity2 = np.array([bboxes1[i][0], bboxes1[i][1]]) - np.array([bboxes2[j][0], bboxes2[j][1]])
+            motion_mat[i][j] = np.linalg.norm(velocity1 - velocity2)
+
+    return motion_mat

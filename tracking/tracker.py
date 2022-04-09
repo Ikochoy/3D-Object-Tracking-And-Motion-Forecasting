@@ -5,9 +5,9 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from tracking.cost import iou_2d, geom_2d
+from tracking.cost import iou_2d, geom_2d, motion_2d
 from tracking.matching import greedy_matching, hungarian_matching
-from tracking.types import ActorID, AssociateMethod, SingleTracklet
+from tracking.types import ActorID, AssociateMethod, SingleTracklet, Tracklets
 
 
 class Tracker:
@@ -50,13 +50,18 @@ class Tracker:
         # new cost matrix using geometric distance
         return geom_2d(bboxes1, bboxes2)
 
+    def cost_matrix_motion_feature(self, bboxes1, bboxes2, track_ids: List[ActorID]):
+        # new cost matrix using motion feature
+        return motion_2d(bboxes1, bboxes2, track_ids, self.tracks)
 
-    def cost_matrix(self, bboxes1: Tensor, bboxes2: Tensor) -> Tensor:
+
+    def cost_matrix(self, bboxes1: Tensor, bboxes2: Tensor, track_ids: List[ActorID], cost_type=0) -> Tensor:
         """Given two set of bounding boxes, this function computes the affinity matrix between two bbox sets
 
         Args:
             bboxes1: bounding box set of shape [M, 5]
             bboxes2: bounding box set of shape [N, 5]
+            cost_type: 0 for iou, 1 for geometric distance, 2 for motion feature
         Returns:
             cost_matrix: cost matrix of shape [M, N]
         """
@@ -65,11 +70,18 @@ class Tracker:
         # cost_matrix = torch.ones((M, N))
 
         # TODO: new cost functions
-        cost_matrix = 1 - torch.tensor(iou_2d(bboxes1.numpy(), bboxes2.numpy()))
+        if cost_type == 0:
+            cost_matrix = 1 - torch.tensor(iou_2d(bboxes1.numpy(), bboxes2.numpy()))
+        elif cost_type == 1:
+            cost_matrix = self.cost_matrix_geom_distance(bboxes1, bboxes2)
+        elif cost_type == 2:
+            cost_matrix = self.cost_matrix_motion_feature(bboxes1, bboxes2, track_ids)
+        # TODO: experiment with other cost function combinations
+        
         return cost_matrix
 
     def associate_greedy(
-        self, bboxes1: Tensor, bboxes2: Tensor
+        self, bboxes1: Tensor, bboxes2: Tensor, track_ids: List[ActorID]
     ) -> Tuple[Tensor, Tensor]:
         """This function aims to find the greedy association between two set of bounding boxes
 
@@ -83,7 +95,7 @@ class Tracker:
         """
         # TODO: Replace this stub code by invoking self.cost_matrix and greedy_matching
         M, N = bboxes1.shape[0], bboxes2.shape[0]
-        cost_matrix = self.cost_matrix(bboxes1, bboxes2)
+        cost_matrix = self.cost_matrix(bboxes1, bboxes2, track_ids)
         lst1, lst2 = greedy_matching(cost_matrix)
         
         assign_matrix = torch.zeros((M, N))
@@ -93,7 +105,7 @@ class Tracker:
         return assign_matrix, cost_matrix
 
     def associate_hungarian(
-        self, bboxes1: Tensor, bboxes2: Tensor
+        self, bboxes1: Tensor, bboxes2: Tensor, track_ids: List[ActorID]
     ) -> Tuple[Tensor, Tensor]:
         """This function aims to find the hungarian association between two set of bounding boxes
 
@@ -107,7 +119,7 @@ class Tracker:
         """
         # TODO: Replace this stub code by invoking self.cost_matrix and hungarian_matching
         M, N = bboxes1.shape[0], bboxes2.shape[0]
-        cost_matrix = self.cost_matrix(bboxes1, bboxes2)
+        cost_matrix = self.cost_matrix(bboxes1, bboxes2, track_ids)
         lst1, lst2 = hungarian_matching(cost_matrix)
         assign_matrix = torch.zeros((M, N))
         for i in range(len(lst1)):
@@ -116,7 +128,7 @@ class Tracker:
         return assign_matrix, cost_matrix
 
     def track_consecutive_frame(
-        self, bboxes1: Tensor, bboxes2: Tensor
+        self, bboxes1: Tensor, bboxes2: Tensor, track_ids: List[ActorID]
     ) -> Tuple[Tensor, Tensor]:
         """This function tracks the bboxes2 in the current frame against bboxes1 in the previous frame,
         by associating bboxes1 and bboxes2 with associate_method, and filtering out the associations with
@@ -133,9 +145,9 @@ class Tracker:
             cost_matrix: cost matrix of shape [M, N]
         """
         if self.associate_method == AssociateMethod.GREEDY:
-            assign_matrix, cost_matrix = self.associate_greedy(bboxes1, bboxes2)
+            assign_matrix, cost_matrix = self.associate_greedy(bboxes1, bboxes2, track_ids)
         elif self.associate_method == AssociateMethod.HUNGARIAN:
-            assign_matrix, cost_matrix = self.associate_hungarian(bboxes1, bboxes2)
+            assign_matrix, cost_matrix = self.associate_hungarian(bboxes1, bboxes2, track_ids)
         else:
             raise ValueError(f"Unknown association method {self.associate_method}")
 
@@ -169,10 +181,12 @@ class Tracker:
             if scores_seq is not None:
                 prev_bboxes = prev_bboxes[scores_seq[frame_id - 1] >= self.min_score]
                 cur_bboxes = cur_bboxes[scores_seq[frame_id] >= self.min_score]
+
+            prev_frame_track_ids = deepcopy(cur_frame_track_ids)  # contains track ids of previous frame covering all bboxes in the prev frame
             assign_matrix, cost_matrix = self.track_consecutive_frame(
-                prev_bboxes, cur_bboxes
+                prev_bboxes, cur_bboxes, prev_frame_track_ids
             )
-            prev_frame_track_ids = deepcopy(cur_frame_track_ids)
+
             cur_frame_track_ids = []
             prev_bbox_ids, cur_bbox_ids = np.where(assign_matrix)
             for j in range(cur_bboxes.shape[0]):

@@ -154,7 +154,8 @@ def train(
     for epoch in range(num_epochs):
         for idx, (bev_lidar, bev_targets, labels) in tqdm(enumerate(dataloader)):
             model.train()
-            predictions = model(bev_lidar.to(device))
+            predictions, embeddings = model(bev_lidar.to(device))   # get embeddings from the model
+
             loss, loss_metadata = loss_fn(predictions, bev_targets.to(device))
             optimizer.zero_grad()
             loss.backward()
@@ -190,7 +191,7 @@ def train(
                 plt.savefig(f"{output_root}/detections.png")
                 plt.close("all")
 
-        torch.save(model.state_dict(), f"{output_root}/{epoch:03d}.pth")
+        torch.save(model.state_dict(), f"{output_root}/{epoch:03d}.pkl")  # ?? originally .pth [can't find how they created the .pkl files]
 
 
 @torch.no_grad()

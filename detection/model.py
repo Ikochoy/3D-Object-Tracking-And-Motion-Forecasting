@@ -67,6 +67,9 @@ class DetectionModel(nn.Module):
             nn.Upsample(scale_factor=4, mode="bilinear", align_corners=True),  # 1x
         )
 
+        self.embedding = None
+        
+
     def forward(self, x: Tensor) -> Tensor:
         """Perform a forward pass of the model's neural network.
 
@@ -78,7 +81,9 @@ class DetectionModel(nn.Module):
             A [batch_size x 7 x H x W] tensor, representing the dense detection outputs.
                 The 7 channels are (heatmap, offset_x, offset_y, x_size, y_size, sin_theta, cos_theta).
         """
-        return self._head(self._backbone(x))
+        # get embedding from backbone
+        self.embedding = self._backbone(x)
+        return self._head(self.embedding), self.embedding
 
     @torch.no_grad()
     def inference(
