@@ -55,7 +55,7 @@ class Tracker:
         return motion_2d(bboxes1, bboxes2, track_ids, self.tracks)
 
 
-    def cost_matrix(self, bboxes1: Tensor, bboxes2: Tensor, track_ids: List[ActorID], cost_type=0) -> Tensor:
+    def cost_matrix(self, bboxes1: Tensor, bboxes2: Tensor, track_ids: List[ActorID], cost_type=1) -> Tensor:
         """Given two set of bounding boxes, this function computes the affinity matrix between two bbox sets
 
         Args:
@@ -73,9 +73,9 @@ class Tracker:
         if cost_type == 0:
             cost_matrix = 1 - torch.tensor(iou_2d(bboxes1.numpy(), bboxes2.numpy()))
         elif cost_type == 1:
-            cost_matrix = self.cost_matrix_geom_distance(bboxes1, bboxes2)
+            cost_matrix = torch.tensor(self.cost_matrix_geom_distance(bboxes1, bboxes2))
         elif cost_type == 2:
-            cost_matrix = self.cost_matrix_motion_feature(bboxes1, bboxes2, track_ids)
+            cost_matrix = torch.tensor(self.cost_matrix_motion_feature(bboxes1, bboxes2, track_ids))
         # TODO: experiment with other cost function combinations
         
         return cost_matrix
@@ -152,7 +152,19 @@ class Tracker:
             raise ValueError(f"Unknown association method {self.associate_method}")
 
         # TODO: Filter out matches with costs >= self.match_th
-        assign_matrix[cost_matrix >= self.match_th] = 0
+        # purpose: in the iou default setting, get rid of assignments in assign_matrix
+        # that are matched but no actual overlap in bboxes; 
+        # under the assumption that matching bboxes should overlap, 
+        # TODO: allow matching non-overlapping bboxes by ignoring the threshold i.e. set self.match_th = 2
+        # note that all costs in the default iou are <= 1
+
+        # print("self.match_th", self.match_th)
+        # print("assign_matrix.shape", assign_matrix.shape)
+        # print("cost >= match_th", cost_matrix >= self.match_th)
+        # print("sum(assign_matrix)", sum(assign_matrix))
+        cost_of_assigned = cost_matrix[assign_matrix.bool()]
+        # print("cost of assigned", cost_of_assigned.shape, cost_of_assigned)
+        assign_matrix[cost_matrix >= self.match_th] = 0 
 
         return assign_matrix, cost_matrix
 

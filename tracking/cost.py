@@ -42,6 +42,7 @@ def iou_2d(bboxes1: np.ndarray, bboxes2: np.ndarray) -> np.ndarray:
             union = polygon1.union(polygon2).area
             iou = intersect / union
             iou_mat[i][j] = iou
+    # print(iou_mat.shape, iou_mat)
     return iou_mat
 
 
@@ -49,8 +50,8 @@ def geom_2d(bboxes1: np.ndarray, bboxes2: np.ndarray) -> np.ndarray:
     M, N = bboxes1.shape[0], bboxes2.shape[0]
     geom_mat = np.zeros((M, N))
     lam_t = 5
-    lam_size = 3
-    lam_yaw = 5
+    lam_size = 1
+    lam_yaw = 3
 
     for i in range(M):
         for j in range(N):
@@ -71,7 +72,11 @@ def geom_2d(bboxes1: np.ndarray, bboxes2: np.ndarray) -> np.ndarray:
 
             geom_mat[i][j] = lam_t * t_diff + lam_size * size_diff + lam_yaw * yaw_diff
 
+    # print(geom_mat.shape)
 
+    max_items = np.max(geom_mat, axis=1).reshape(len(geom_mat), 1)  # max of each row
+    geom_mat = geom_mat / max_items  # normalize per row
+    # geom_mat = geom_mat / geom_mat.max()
     return geom_mat
 
 
