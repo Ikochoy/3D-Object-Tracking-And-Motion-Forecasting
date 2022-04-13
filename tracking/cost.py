@@ -95,11 +95,17 @@ def motion_2d(bboxes1: np.ndarray, bboxes2: np.ndarray, track_ids, all_tracklets
         track_id = track_ids[i]
         tracklet = all_tracklets_in_seq[track_id]
         # get velocities from the last 2 tracklet.bboxes_traj bboxes
-        velocity1 = np.array([tracklet.bboxes_traj[-2][0], tracklet.bboxes_traj[-2][1]]) - np.array([bboxes1[i][0], bboxes1[i][1]])
 
+        if len(tracklet.bboxes_traj) > 1:
+            velocity1 = np.array([tracklet.bboxes_traj[-2][0], tracklet.bboxes_traj[-2][1]]) - np.array([bboxes1[i][0], bboxes1[i][1]])
+        else:
+            velocity1 = np.array([0, 0])  # 1st appearance with unknown entry velocity of this actor
         for j in range(N):
             # calculate the velocity i.e. displacement between bboxes1 centroid and bboxes2 centroid
             velocity2 = np.array([bboxes1[i][0], bboxes1[i][1]]) - np.array([bboxes2[j][0], bboxes2[j][1]])
             motion_mat[i][j] = np.linalg.norm(velocity1 - velocity2)
 
+    max_items = np.max(motion_mat, axis=1).reshape(len(motion_mat), 1)
+    motion_mat = motion_mat / max_items
+    # motion_mat = motion_mat / motion_mat.max()
     return motion_mat

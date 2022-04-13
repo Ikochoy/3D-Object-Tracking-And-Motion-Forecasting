@@ -55,7 +55,7 @@ class Tracker:
         return motion_2d(bboxes1, bboxes2, track_ids, self.tracks)
 
 
-    def cost_matrix(self, bboxes1: Tensor, bboxes2: Tensor, track_ids: List[ActorID], cost_type=1) -> Tensor:
+    def cost_matrix(self, bboxes1: Tensor, bboxes2: Tensor, track_ids: List[ActorID], cost_type=3) -> Tensor:
         """Given two set of bounding boxes, this function computes the affinity matrix between two bbox sets
 
         Args:
@@ -77,7 +77,10 @@ class Tracker:
         elif cost_type == 2:
             cost_matrix = torch.tensor(self.cost_matrix_motion_feature(bboxes1, bboxes2, track_ids))
         # TODO: experiment with other cost function combinations
-        
+        elif cost_type == 3:
+            cost_matrix = (0.5 * torch.tensor(self.cost_matrix_motion_feature(bboxes1, bboxes2, track_ids)) 
+                         + 0.5 * torch.tensor(1 - torch.tensor(iou_2d(bboxes1.numpy(), bboxes2.numpy()))))
+            
         return cost_matrix
 
     def associate_greedy(
