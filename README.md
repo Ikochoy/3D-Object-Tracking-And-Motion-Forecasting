@@ -1,3 +1,22 @@
+# 3D-Object-Tracking-And-Motion-Forecasting
+
+For running the Improved Object Tracking experiments, change the default cost_type in the cost_matrix() function definition on line 58 of the tracker.py.
+
+cost_type=0 for only IoU cost <br>
+cost_type=1 for only geometric distance cost <br>
+cost_type=2 for only motion feature cost <br>
+cost_type=3 for combined IoU and motion feature cost <br>
+
+
+Then run the following: 
+```
+python -m tracking.main track --dataset_path=<path> --tracker_associate_method=hungarian
+python -m tracking.main evaluate
+python -m tracking.main visualize
+
+```
+
+
 # CSC490H1: Making Your Self-driving Car Perceive the World
 
 This repository contains the starter code for CSC490H1:
@@ -44,4 +63,3 @@ Making Your Self-driving Car Perceive the World.
    ```bash
    unzip pandaset_0.zip -d <your_path_to_dataset>
    ```
-# 3D-Object-Tracking-And-Motion-Forecasting
