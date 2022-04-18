@@ -6,7 +6,7 @@ from uuid import UUID
 import torch
 
 from detection.types import Detections
-
+from .cost import iou_2d
 
 class AssociateMethod(str, Enum):
     GREEDY = "greedy"
@@ -47,6 +47,31 @@ class SingleTracklet:
         self.frame_ids.append(new_frame_id)
         self.bboxes_traj.append(new_bbox)
         self.scores.append(new_score)
+    
+    def is_connected(self, other: "SingleTracklet", iou_th=0.1) -> bool:  # change iou_th
+        """Check if two tracklets are connected i.e. the bbox in last frame of self tracklet
+        overlaps with the bbox in first frame of other tracklet.
+
+        Args:
+            other: another tracklet
+
+        Returns:
+            True if the two tracklets are connected, False otherwise
+        """
+        if len(self.frame_ids) == 0 or len(other.frame_ids) == 0:
+            return False
+        if self.frame_ids[-1] > other.frame_ids[0]:
+            return False
+        # there exists gap frames between the two tracklets
+        last_bbox_self = self.bboxes_traj[-1].unsqueeze(0).numpy()
+        first_bbox_other = other.bboxes_traj[0].unsqueeze(0).numpy()
+        iou_mat = torch.tensor(iou_2d(last_bbox_self, first_bbox_other))
+        iou = iou_mat.squeeze().item()  # for single bbox1 and bbox2 iou is a scalar
+        print(f"iou: {iou}")
+        if iou > iou_th:  # Assumption: stationary actor via IoU
+            return True
+        
+        return False
 
 
 class Tracklets:
