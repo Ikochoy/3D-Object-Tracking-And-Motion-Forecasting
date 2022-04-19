@@ -1,3 +1,4 @@
+import json
 import os
 import pickle
 
@@ -47,7 +48,36 @@ def track(
         tracker = Tracker(
             track_steps=80, associate_method=AssociateMethod(tracker_associate_method)
         )
+        # tracker.tracks is a dictionary of Dict[ActorID, SingleTracklet]
+
+        # for debugging: design small tracklets where scores = 1 for all
+        # tracking_inputs = ?
         tracker.track(tracking_inputs.bboxes, tracking_inputs.scores)
+
+        # post-process the tracklets to connect tracklets i.e. reduce fragmentation
+        # look at all tracklets (after calling track), and connect similar actors
+        # predict re-appearance location, or somewhere in between
+            # actors close to each other problem: higher match in Iou greedy/hungarian, and threshold
+            # bonus when exploring other ways of predicting for occlusion handling
+        
+        actors_to_remove = []
+        actors_looked_at = []
+        for actor_id1 in tracker.tracks:
+            for actor_id2 in tracker.tracks:
+                if actor_id1 == actor_id2 or actor_id2 in actors_looked_at or actor_id2 in actors_to_remove:  
+                    continue  # skip all actors started at the same frame or previous frame, or to be removed (i.e. matched)
+                if tracker.tracks[actor_id1].is_connected(tracker.tracks[actor_id2]):
+                    # append actor_id2 tracklet to actor_id1 tracklet  [TODO: add middle preds]
+                    tracker.tracks[actor_id1].frame_ids.extend(tracker.tracks[actor_id2].frame_ids)
+                    tracker.tracks[actor_id1].bboxes_traj.extend(tracker.tracks[actor_id2].bboxes_traj)
+                    tracker.tracks[actor_id1].scores.extend(tracker.tracks[actor_id2].scores)
+                    actors_to_remove.append(actor_id2)
+            actors_looked_at.append(actor_id1)
+
+        for actor_id in actors_to_remove:
+            removed = tracker.tracks.pop(actor_id)
+            print("removed actor_id, frames_ids, traj, scores:", actor_id, removed.frame_ids, removed.bboxes_traj, removed.scores)
+
         tracking_pred = Tracklets(tracker.tracks)
         save_dict = {
             "sequence_id": seq_id,
